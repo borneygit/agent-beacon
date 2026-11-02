@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -783,9 +784,15 @@ func timestampValue(value interface{}) time.Time {
 	return time.Now().UTC()
 }
 
+// floatValueFromString reads a string that is entirely a number. It used to scan the
+// leading number only, so a RFC3339 timestamp such as "2026-10-31T02:41:17.937Z" came
+// back as 2026 and timestampValue turned it into 1970-01-01T00:33:46Z. A Pi session
+// header carries such a timestamp, so its trace started in 1970 and the local history's
+// retention deleted the whole session as expired. An ISO timestamp now falls through to
+// the parsers that follow this one.
 func floatValueFromString(value string) (float64, bool) {
-	var out float64
-	if _, err := fmt.Sscanf(strings.TrimSpace(value), "%f", &out); err != nil {
+	out, err := strconv.ParseFloat(strings.TrimSpace(value), 64)
+	if err != nil {
 		return 0, false
 	}
 	return out, true
